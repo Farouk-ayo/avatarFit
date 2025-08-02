@@ -35,18 +35,20 @@ type ClothingModelProps = {
 // Avatar Model Component
 function AvatarModel({ url, onLoad }: ModelProps) {
   const { scene } = useGLTF(url) as { scene: THREE.Group };
-  const meshRef = useRef<THREE.Object3D>(null);
+  const initRef = useRef(false);
 
   useEffect(() => {
-    if (scene) {
+    if (scene && !initRef.current) {
+      initRef.current = true;
+
+      // compute bounding box
       const box = new THREE.Box3().setFromObject(scene);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
+      const scale = 2 / Math.max(size.x, size.y, size.z);
 
-      const maxSize = Math.max(size.x, size.y, size.z);
-      const scale = 2 / maxSize;
+      // apply transforms once
       scene.scale.setScalar(scale);
-
       scene.position.sub(center.multiplyScalar(scale));
       scene.position.y = -1;
 
@@ -54,7 +56,7 @@ function AvatarModel({ url, onLoad }: ModelProps) {
     }
   }, [scene, onLoad]);
 
-  return scene ? <primitive ref={meshRef} object={scene} /> : null;
+  return scene ? <primitive object={scene} /> : null;
 }
 
 // Clothing Model Component
@@ -212,9 +214,7 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
       />
 
       {sceneState.avatarModel && (
-        <Center>
-          <AvatarModel url={sceneState.avatarModel} onLoad={handleAvatarLoad} />
-        </Center>
+        <AvatarModel url={sceneState.avatarModel} onLoad={handleAvatarLoad} />
       )}
 
       {sceneState.clothingModel && avatarBounds && (
