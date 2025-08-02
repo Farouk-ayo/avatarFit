@@ -1,0 +1,39 @@
+{
+  "name": "avatarfit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.2.0",
+    "@mui/lab": "^7.0.0-beta.14",
+    "@mui/material": "^7.2.0",
+    "@react-three/drei": "^10.6.1",
+    "@react-three/fiber": "^9.3.0",
+    "formidable": "^3.5.4",
+    "fs-extra": "^11.3.0",
+    "next": "15.4.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-dropzone": "^14.3.8",
+    "three": "^0.179.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/formidable": "^3.4.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.178.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
