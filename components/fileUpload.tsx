@@ -1,4 +1,4 @@
-import React, { useCallback, ReactNode } from "react";
+import { useCallback, ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import { Box, Button, Typography, Paper } from "@mui/material";
 import { CloudUpload } from "@mui/icons-material";

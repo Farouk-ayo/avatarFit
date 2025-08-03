@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Typography, Chip } from "@mui/material";
 import { Person, CloudUpload } from "@mui/icons-material";
 import FileUpload from "@/components/fileUpload";

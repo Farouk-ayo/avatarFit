@@ -1,7 +1,7 @@
 {
-  "avatarModel": null,
-  "clothingModel": "/uploads/clothing_6575c091-bf81-4db6-b19b-1d45114cf0be.glb",
+  "avatarModel": "/uploads/avatar_fb8401f2-86b4-4be9-bb5d-53d8d6c58bcb.glb",
+  "clothingModel": null,
   "clothingVisible": true,
-  "clothingColor": "#ffffff",
-  "timestamp": "2025-08-03T15:38:05.963Z"
+  "clothingColor": "#",
+  "timestamp": "2025-08-03T18:58:03.655Z"
 }

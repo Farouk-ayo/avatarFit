@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Container,
@@ -39,11 +39,13 @@ const theme = createTheme({
 const DRAWER_WIDTH = 350;
 
 export default function Home() {
+  const [hasMounted, setHasMounted] = useState(false);
+
   const [sceneState, setSceneState] = useState<SceneState>({
     avatarModel: undefined,
     clothingModel: undefined,
     clothingVisible: true,
-    clothingColor: "#ffffff",
+    clothingColor: "#",
     loading: false,
     error: undefined,
   });
@@ -223,6 +225,21 @@ export default function Home() {
       onClose={handleDrawerClose}
     />
   );
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  if (!hasMounted) {
+    return (
+      <Box
+        sx={{
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: theme.palette.background.default,
+        }}
+      />
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>

@@ -1,4 +1,3 @@
-// Updated ControlPanel.tsx
 import React, { useState } from "react";
 import { Box, Typography, Alert } from "@mui/material";
 import AvatarUpload from "./AvatarUpload";
@@ -33,9 +32,8 @@ export default function ControlPanel({
 
   const handleActionWithClose = (action: () => void) => {
     action();
-    // Close sidebar on mobile after action
     if (isMobile && onClose) {
-      setTimeout(() => onClose(), 500); // Small delay for user feedback
+      setTimeout(() => onClose(), 500);
     }
   };
 
