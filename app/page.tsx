@@ -12,7 +12,7 @@ import {
 import { SceneRef, SceneState, UploadResponse } from "@/types";
 import ControlPanel from "@/components/ControlPanel";
 import Scene3D from "@/components/Scene3D";
-import LoadingSpinner from "@/components/LoadingSpinner";
+import LoadingSpinner from "@/components/loadingSpinner";
 
 const theme = createTheme({
   palette: {
