@@ -9,10 +9,10 @@ import {
   createTheme,
   CssBaseline,
 } from "@mui/material";
-import ControlPanel from "../components/controlPanel";
-import LoadingSpinner from "../components/loadingSpinner";
-import Scene3D from "@/components/scene3D.";
 import { SceneRef, SceneState, UploadResponse } from "@/types";
+import ControlPanel from "@/components/ControlPanel";
+import Scene3D from "@/components/Scene3D";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const theme = createTheme({
   palette: {
