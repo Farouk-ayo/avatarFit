@@ -66,7 +66,7 @@ A web application that allows users to upload 3D avatar models and fit clothing 
 ### File Requirements
 
 - **Supported Formats**: GLB, GLTF
-- **File Size Limit**: 50MB per file
+- **File Size Limit**: 100MB per file
 - **Model Requirements**:
   - Avatar models should be centered and properly scaled
   - Clothing models should be designed to fit humanoid avatars

@@ -34,7 +34,7 @@ export async function POST(
     const contentLength = request.headers.get("content-length");
     console.log("Content-Length:", contentLength);
 
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    const maxSize = 100 * 1024 * 1024; // 100MB
 
     if (contentLength && parseInt(contentLength) > maxSize) {
       return NextResponse.json(
@@ -44,7 +44,7 @@ export async function POST(
             parseInt(contentLength) /
             1024 /
             1024
-          ).toFixed(2)}MB exceeds 50MB limit`,
+          ).toFixed(2)}MB exceeds 100MB limit`,
         },
         { status: 413 }
       );
@@ -71,7 +71,7 @@ export async function POST(
           error: "File too large",
           details: `File size ${(file.size / 1024 / 1024).toFixed(
             2
-          )}MB exceeds 50MB limit`,
+          )}MB exceeds 100MB limit`,
         },
         { status: 413 }
       );

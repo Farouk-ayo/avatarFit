@@ -38,7 +38,7 @@ export default async function handler(
     const form = formidable({
       uploadDir: uploadDir,
       keepExtensions: true,
-      maxFileSize: 50 * 1024 * 1024, // 50MB
+      maxFileSize: 100 * 1024 * 1024, // 100MB
     });
 
     const [fields, files]: [Fields, Files] = await new Promise(
