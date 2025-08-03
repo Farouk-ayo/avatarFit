@@ -8,7 +8,6 @@ import {
   Divider,
   Alert,
   Chip,
-  Stack,
 } from "@mui/material";
 import {
   CloudUpload,
@@ -19,27 +18,9 @@ import {
   Refresh,
   Palette,
 } from "@mui/icons-material";
-// Assuming this was incorrectly imported from @mui/x-date-pickers — it's not used
-// import { ColorPicker } from '@mui/x-date-pickers';
+import { ChromePicker } from "react-color";
 import FileUpload from "./fileUpload";
-
-type SceneState = {
-  avatarModel?: string;
-  clothingModel?: string;
-  clothingVisible?: boolean;
-  clothingColor?: string;
-  loading?: boolean;
-  error?: string;
-};
-
-type ControlPanelProps = {
-  sceneState: SceneState;
-  onAvatarUpload: (file: File) => void;
-  onClothingUpload: (file: File) => void;
-  onToggleClothing: () => void;
-  onColorChange: (color: string) => void;
-  onResetScene: () => void;
-};
+import { ControlPanelProps } from "@/types";
 
 export default function ControlPanel({
   sceneState,
@@ -50,21 +31,6 @@ export default function ControlPanel({
   onResetScene,
 }: ControlPanelProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-
-  const colorOptions: string[] = [
-    "#ffffff",
-    "#ff0000",
-    "#00ff00",
-    "#0000ff",
-    "#ffff00",
-    "#ff00ff",
-    "#00ffff",
-    "#000000",
-    "#ffa500",
-    "#800080",
-    "#ffc0cb",
-    "#a52a2a",
-  ];
 
   const handleColorSelect = (color: string) => {
     onColorChange(color);
@@ -196,29 +162,13 @@ export default function ControlPanel({
               </Button>
 
               {colorPickerOpen && (
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {colorOptions.map((color) => (
-                    <Box
-                      key={color}
-                      sx={{
-                        width: 30,
-                        height: 30,
-                        backgroundColor: color,
-                        border: "2px solid",
-                        borderColor:
-                          sceneState.clothingColor === color
-                            ? "primary.main"
-                            : "grey.400",
-                        borderRadius: 1,
-                        cursor: "pointer",
-                        "&:hover": {
-                          borderColor: "primary.main",
-                        },
-                      }}
-                      onClick={() => handleColorSelect(color)}
-                    />
-                  ))}
-                </Stack>
+                <Box sx={{ mt: 2 }}>
+                  <ChromePicker
+                    color={sceneState.clothingColor || "#ffffff"}
+                    onChangeComplete={(color) => handleColorSelect(color.hex)}
+                    disableAlpha
+                  />
+                </Box>
               )}
             </Box>
           </Box>

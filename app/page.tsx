@@ -12,31 +12,7 @@ import {
 import ControlPanel from "../components/controlPanel";
 import LoadingSpinner from "../components/loadingSpinner";
 import Scene3D from "@/components/scene3D.";
-
-// Type definitions
-interface SceneState {
-  avatarModel: string | undefined;
-  clothingModel: string | undefined;
-  clothingVisible: boolean;
-  clothingColor: string;
-  loading: boolean;
-  error: string | undefined;
-}
-
-interface SceneRef {
-  toggleClothingVisibility: (visible: boolean) => void;
-  changeClothingColor: (color: string) => void;
-  clearScene: () => void;
-}
-
-interface UploadResponse {
-  success: boolean;
-  url: string;
-  filename: string;
-  originalName: string;
-  size: number;
-  type: string;
-}
+import { SceneRef, SceneState, UploadResponse } from "@/types";
 
 const theme = createTheme({
   palette: {
