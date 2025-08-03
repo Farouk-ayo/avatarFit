@@ -5,10 +5,10 @@ import {
   FormControlLabel,
   Switch,
   Button,
+  ClickAwayListener,
 } from "@mui/material";
 import { Visibility, VisibilityOff, Palette } from "@mui/icons-material";
 import { ChromePicker } from "react-color";
-import { SceneState } from "@/types";
 
 interface ClothingControlsProps {
   clothingVisible: boolean;
@@ -16,6 +16,7 @@ interface ClothingControlsProps {
   onToggleClothing: () => void;
   onColorChange: (color: string) => void;
 }
+
 const ClothingControls = ({
   clothingVisible,
   clothingColor,
@@ -26,7 +27,6 @@ const ClothingControls = ({
 
   const handleColorSelect = (color: string) => {
     onColorChange(color);
-    setColorPickerOpen(false);
   };
 
   return (
@@ -62,14 +62,17 @@ const ClothingControls = ({
           Change Color
         </Button>
 
+        {/* ✅ Wrap color picker in ClickAwayListener */}
         {colorPickerOpen && (
-          <Box sx={{ mt: 2 }}>
-            <ChromePicker
-              color={clothingColor || "#ffffff"}
-              onChangeComplete={(color) => handleColorSelect(color.hex)}
-              disableAlpha
-            />
-          </Box>
+          <ClickAwayListener onClickAway={() => setColorPickerOpen(false)}>
+            <Box sx={{ mt: 2, zIndex: 10 }}>
+              <ChromePicker
+                color={clothingColor || "#ffffff"}
+                onChangeComplete={(color) => handleColorSelect(color.hex)}
+                disableAlpha
+              />
+            </Box>
+          </ClickAwayListener>
         )}
       </Box>
     </Box>

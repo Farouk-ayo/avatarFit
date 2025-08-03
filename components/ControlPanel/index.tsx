@@ -1,6 +1,6 @@
+// Updated ControlPanel.tsx
 import React, { useState } from "react";
 import { Box, Typography, Alert } from "@mui/material";
-import FileUpload from "../fileUpload";
 import AvatarUpload from "./AvatarUpload";
 import ClothingUpload from "./ClothingUpload";
 import ClothingControls from "./ClothingControl";
@@ -9,6 +9,11 @@ import SceneInfo from "./SceneInfo";
 
 import { ControlPanelProps } from "@/types";
 
+interface ResponsiveControlPanelProps extends ControlPanelProps {
+  isMobile?: boolean;
+  onClose?: () => void;
+}
+
 export default function ControlPanel({
   sceneState,
   onAvatarUpload,
@@ -16,7 +21,9 @@ export default function ControlPanel({
   onToggleClothing,
   onColorChange,
   onResetScene,
-}: ControlPanelProps) {
+  isMobile = false,
+  onClose,
+}: ResponsiveControlPanelProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   const handleColorSelect = (color: string) => {
@@ -24,9 +31,34 @@ export default function ControlPanel({
     setColorPickerOpen(false);
   };
 
+  const handleActionWithClose = (action: () => void) => {
+    action();
+    // Close sidebar on mobile after action
+    if (isMobile && onClose) {
+      setTimeout(() => onClose(), 500); // Small delay for user feedback
+    }
+  };
+
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Typography variant="h6" gutterBottom sx={{ color: "primary.main" }}>
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        p: isMobile ? 2 : 0,
+      }}
+    >
+      <Typography
+        variant="h6"
+        gutterBottom
+        sx={{
+          color: "primary.main",
+          borderBottom: isMobile ? "1px solid" : "none",
+          borderColor: "divider",
+          pb: isMobile ? 1 : 0,
+          mb: isMobile ? 2 : 1,
+        }}
+      >
         Scene Controls
       </Typography>
 
@@ -36,24 +68,31 @@ export default function ControlPanel({
         </Alert>
       )}
 
-      <AvatarUpload sceneState={sceneState} onAvatarUpload={onAvatarUpload} />
+      <AvatarUpload
+        sceneState={sceneState}
+        onAvatarUpload={(file) =>
+          handleActionWithClose(() => onAvatarUpload(file))
+        }
+      />
 
       <ClothingUpload
         sceneState={sceneState}
-        onClothingUpload={onClothingUpload}
+        onClothingUpload={(file) =>
+          handleActionWithClose(() => onClothingUpload(file))
+        }
       />
 
       {sceneState.clothingModel && (
         <ClothingControls
           clothingVisible={sceneState.clothingVisible}
           clothingColor={sceneState.clothingColor}
-          onToggleClothing={onToggleClothing}
+          onToggleClothing={() => handleActionWithClose(onToggleClothing)}
           onColorChange={handleColorSelect}
         />
       )}
 
       <ResetSceneAction
-        onResetScene={onResetScene}
+        onResetScene={() => handleActionWithClose(onResetScene)}
         disabled={sceneState.loading}
       />
 

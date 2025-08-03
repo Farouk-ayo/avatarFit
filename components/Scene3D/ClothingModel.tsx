@@ -15,7 +15,7 @@ export default function ClothingModel({
   const meshRef = useRef<THREE.Object3D>(null);
   const fittedRef = useRef(false);
 
-  // Apply automatic fitting when both clothing and avatar are loaded
+  // Automatic fitting when both clothing and avatar are loaded
   useEffect(() => {
     if (scene && avatarData && !fittedRef.current) {
       fittedRef.current = true;

@@ -11,7 +11,7 @@ export default function AvatarModel({ url, onLoad }: ModelProps) {
     if (scene && !initRef.current) {
       initRef.current = true;
 
-      // Normalize avatar size and position
+      // Normalizing avatar size and position
       const box = new THREE.Box3().setFromObject(scene);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
