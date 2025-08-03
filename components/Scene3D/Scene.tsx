@@ -6,6 +6,7 @@ import AvatarModel from "./AvatarModel";
 import ClothingModel from "./ClothingModel";
 import { analyzeAvatar } from "./utils";
 import type { SceneProps, AvatarData, SceneManager } from "./types";
+import { useControls } from "leva";
 
 export default function Scene({ sceneState, onSceneReady }: SceneProps) {
   const { camera, scene } = useThree();
@@ -57,10 +58,28 @@ export default function Scene({ sceneState, onSceneReady }: SceneProps) {
     console.log("Clothing loaded");
   };
 
+  // Leva Controls
+  const {
+    ambientIntensity,
+    dirIntensity,
+    cameraX,
+    cameraY,
+    cameraZ,
+    showHelpers,
+  } = useControls("Debug Controls", {
+    ambientIntensity: { value: 0.6, min: 0, max: 2, step: 0.1 },
+    dirIntensity: { value: 1.0, min: 0, max: 5, step: 0.1 },
+    cameraX: { value: 0, min: -10, max: 10, step: 0.1 },
+    cameraY: { value: 1, min: -10, max: 10, step: 0.1 },
+    cameraZ: { value: 5, min: -10, max: 20, step: 0.1 },
+    showHelpers: false,
+  });
+
+  // Sync camera position
   useEffect(() => {
-    camera.position.set(0, 1, 5);
+    camera.position.set(cameraX, cameraY, cameraZ);
     camera.lookAt(0, 0, 0);
-  }, [camera]);
+  }, [cameraX, cameraY, cameraZ, camera]);
 
   const initialized = useRef(false);
   useEffect(() => {
@@ -72,10 +91,11 @@ export default function Scene({ sceneState, onSceneReady }: SceneProps) {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
+      {showHelpers && <axesHelper args={[2]} />}
+      <ambientLight intensity={ambientIntensity} />
       <directionalLight
         position={[10, 10, 5]}
-        intensity={1}
+        intensity={dirIntensity}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
