@@ -1,9 +1,8 @@
-import { useLoader } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { ClothingModelProps } from "./types";
 import { fitClothingToAvatar } from "./utils";
+import { useGLTF } from "@react-three/drei";
 
 export default function ClothingModel({
   url,
@@ -12,36 +11,56 @@ export default function ClothingModel({
   avatarData,
   onLoad,
 }: ClothingModelProps) {
-  const gltf = useLoader(GLTFLoader, url);
-  const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const { scene } = useGLTF(url) as { scene: THREE.Group };
+  const meshRef = useRef<THREE.Object3D>(null);
+  const fittedRef = useRef(false);
 
+  // Apply automatic fitting when both clothing and avatar are loaded
   useEffect(() => {
-    if (gltf && onLoad) {
-      onLoad(gltf.scene);
+    if (scene && avatarData && !fittedRef.current) {
+      fittedRef.current = true;
+      console.log("Applying automatic fitting...");
+      fitClothingToAvatar(scene, avatarData);
+      onLoad?.(scene);
     }
-  }, [gltf, onLoad]);
+  }, [scene, avatarData, onLoad]);
 
+  // Handle visibility
   useEffect(() => {
-    if (gltf && avatarData) {
-      fitClothingToAvatar(gltf.scene, avatarData);
+    if (scene) {
+      scene.visible = visible;
     }
-  }, [gltf, avatarData]);
+  }, [scene, visible]);
 
-  const coloredScene = useMemo(() => {
-    if (!gltf?.scene || !color) return gltf.scene;
-    const cloned = gltf.scene.clone(true);
-    cloned.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        mesh.material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(color),
-        });
-        materialRef.current = mesh.material as THREE.MeshStandardMaterial;
-      }
-    });
-    return cloned;
-  }, [gltf.scene, color]);
+  // Handle color changes
+  useEffect(() => {
+    if (scene && color) {
+      scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh && (child as THREE.Mesh).material) {
+          const mesh = child as THREE.Mesh;
+          if (Array.isArray(mesh.material)) {
+            mesh.material = mesh.material.map((mat) => {
+              const cloned = (mat as THREE.Material).clone();
+              if ((cloned as THREE.MeshStandardMaterial).color) {
+                (cloned as THREE.MeshStandardMaterial).color = new THREE.Color(
+                  color
+                );
+              }
+              return cloned;
+            });
+          } else {
+            const material = (mesh.material as THREE.Material).clone();
+            if ((material as THREE.MeshStandardMaterial).color) {
+              (material as THREE.MeshStandardMaterial).color = new THREE.Color(
+                color
+              );
+            }
+            mesh.material = material;
+          }
+        }
+      });
+    }
+  }, [scene, color]);
 
-  if (!visible) return null;
-  return <primitive object={coloredScene} />;
+  return scene ? <primitive ref={meshRef} object={scene} /> : null;
 }

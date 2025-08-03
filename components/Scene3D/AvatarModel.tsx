@@ -1,16 +1,29 @@
-import { useLoader } from "@react-three/fiber";
-import { GLTFLoader } from "three/examples/jsm/Addons.js";
-import { useEffect } from "react";
+import * as THREE from "three";
+import { useEffect, useRef } from "react";
 import { ModelProps } from "./types";
+import { useGLTF } from "@react-three/drei";
 
 export default function AvatarModel({ url, onLoad }: ModelProps) {
-  const gltf = useLoader(GLTFLoader, url);
+  const { scene } = useGLTF(url) as { scene: THREE.Group };
+  const initRef = useRef(false);
 
   useEffect(() => {
-    if (gltf && onLoad) {
-      onLoad(gltf.scene);
-    }
-  }, [gltf, onLoad]);
+    if (scene && !initRef.current) {
+      initRef.current = true;
 
-  return <primitive object={gltf.scene} />;
+      // Normalize avatar size and position
+      const box = new THREE.Box3().setFromObject(scene);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const scale = 2 / Math.max(size.x, size.y, size.z);
+
+      scene.scale.setScalar(scale);
+      scene.position.sub(center.multiplyScalar(scale));
+      scene.position.y = -1; // Place on ground
+
+      onLoad?.(scene);
+    }
+  }, [scene, onLoad]);
+
+  return scene ? <primitive object={scene} /> : null;
 }
