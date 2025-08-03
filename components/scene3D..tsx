@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, MutableRefObject } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Center, Environment } from "@react-three/drei";
+import React, { useRef, useEffect, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { OrbitControls, useGLTF, Environment } from "@react-three/drei";
 import * as THREE from "three";
 
 type SceneProps = {
@@ -28,9 +28,157 @@ type ClothingModelProps = {
   url: string;
   visible: boolean;
   color?: string;
-  avatarBounds: THREE.Box3;
+  avatarData: AvatarData | null;
   onLoad?: (scene: THREE.Group) => void;
 };
+
+type AvatarData = {
+  bounds: THREE.Box3;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+  keyPoints: {
+    head: THREE.Vector3;
+    chest: THREE.Vector3;
+    waist: THREE.Vector3;
+    shoulders: THREE.Vector3;
+  };
+};
+
+// Utility function to detect clothing type
+function detectClothingType(scene: THREE.Group): string {
+  const box = new THREE.Box3().setFromObject(scene);
+  const size = box.getSize(new THREE.Vector3());
+  const aspectRatio = size.y / size.x;
+
+  // Simple heuristics based on model dimensions
+  if (aspectRatio > 1.5) return "fullbody"; // dress, jumpsuit
+  if (aspectRatio > 0.8) return "jacket"; // jacket, shirt
+  if (aspectRatio > 0.4) return "top"; // t-shirt, blouse
+  if (aspectRatio < 0.3) return "hat"; // hat, cap
+  return "pants"; // pants, shorts
+}
+
+// Enhanced avatar analysis
+function analyzeAvatar(scene: THREE.Group): AvatarData {
+  const bounds = new THREE.Box3().setFromObject(scene);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+
+  // Calculate key body points based on typical human proportions
+  const keyPoints = {
+    head: new THREE.Vector3(center.x, bounds.max.y - size.y * 0.1, center.z),
+    chest: new THREE.Vector3(center.x, bounds.max.y - size.y * 0.3, center.z),
+    waist: new THREE.Vector3(center.x, bounds.max.y - size.y * 0.5, center.z),
+    shoulders: new THREE.Vector3(
+      center.x,
+      bounds.max.y - size.y * 0.25,
+      center.z
+    ),
+  };
+
+  return { bounds, center, size, keyPoints };
+}
+
+// Smart clothing fitting algorithm
+function fitClothingToAvatar(
+  clothingScene: THREE.Group,
+  avatarData: AvatarData
+): void {
+  const clothingType = detectClothingType(clothingScene);
+  const clothingBounds = new THREE.Box3().setFromObject(clothingScene);
+  const clothingSize = clothingBounds.getSize(new THREE.Vector3());
+  const clothingCenter = clothingBounds.getCenter(new THREE.Vector3());
+
+  console.log("Detected clothing type:", clothingType);
+
+  // Reset transforms
+  clothingScene.scale.set(1, 1, 1);
+  clothingScene.position.set(0, 0, 0);
+  clothingScene.rotation.set(0, 0, 0);
+
+  // Calculate scale based on avatar proportions
+  let targetScale: THREE.Vector3;
+  let targetPosition: THREE.Vector3;
+
+  switch (clothingType) {
+    case "fullbody":
+      // Full body clothing (dresses, jumpsuits)
+      targetScale = new THREE.Vector3(
+        (avatarData.size.x * 0.95) / clothingSize.x,
+        (avatarData.size.y * 0.9) / clothingSize.y,
+        (avatarData.size.z * 0.95) / clothingSize.z
+      );
+      targetPosition = avatarData.center.clone();
+      targetPosition.y -= avatarData.size.y * 0.05; // Slight offset down
+      break;
+
+    case "jacket":
+    case "top":
+      // Upper body clothing
+      const upperBodyHeight = avatarData.size.y * 0.4; // Top 40% of body
+      targetScale = new THREE.Vector3(
+        (avatarData.size.x * 1.02) / clothingSize.x, // Slightly larger for comfort
+        upperBodyHeight / clothingSize.y,
+        (avatarData.size.z * 1.02) / clothingSize.z
+      );
+      targetPosition = avatarData.keyPoints.chest.clone();
+      targetPosition.y += upperBodyHeight * 0.1; // Offset to chest level
+      break;
+
+    case "pants":
+      // Lower body clothing
+      const lowerBodyHeight = avatarData.size.y * 0.5; // Bottom 50% of body
+      targetScale = new THREE.Vector3(
+        (avatarData.size.x * 1.0) / clothingSize.x,
+        lowerBodyHeight / clothingSize.y,
+        (avatarData.size.z * 1.0) / clothingSize.z
+      );
+      targetPosition = avatarData.keyPoints.waist.clone();
+      targetPosition.y -= lowerBodyHeight * 0.3; // Position at waist
+      break;
+
+    case "hat":
+      // Head accessories
+      const headSize = avatarData.size.y * 0.15; // Head is ~15% of body
+      const uniformScale =
+        headSize / Math.max(clothingSize.x, clothingSize.y, clothingSize.z);
+      targetScale = new THREE.Vector3(uniformScale, uniformScale, uniformScale);
+      targetPosition = avatarData.keyPoints.head.clone();
+      targetPosition.y += headSize * 0.2; // Slightly above head
+      break;
+
+    default:
+      // Default fitting - proportional scaling
+      const uniformDefaultScale =
+        Math.min(
+          avatarData.size.x / clothingSize.x,
+          avatarData.size.y / clothingSize.y,
+          avatarData.size.z / clothingSize.z
+        ) * 1.02;
+      targetScale = new THREE.Vector3(
+        uniformDefaultScale,
+        uniformDefaultScale,
+        uniformDefaultScale
+      );
+      targetPosition = avatarData.center.clone();
+  }
+
+  // Apply transforms
+  clothingScene.scale.copy(targetScale);
+
+  // Recalculate bounds after scaling
+  const scaledBounds = new THREE.Box3().setFromObject(clothingScene);
+  const scaledCenter = scaledBounds.getCenter(new THREE.Vector3());
+
+  // Position clothing so its center aligns with target position
+  clothingScene.position.copy(targetPosition.sub(scaledCenter));
+
+  console.log("Applied fitting:", {
+    type: clothingType,
+    scale: targetScale,
+    position: clothingScene.position,
+  });
+}
 
 // Avatar Model Component
 function AvatarModel({ url, onLoad }: ModelProps) {
@@ -41,16 +189,15 @@ function AvatarModel({ url, onLoad }: ModelProps) {
     if (scene && !initRef.current) {
       initRef.current = true;
 
-      // compute bounding box
+      // Normalize avatar size and position
       const box = new THREE.Box3().setFromObject(scene);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const scale = 2 / Math.max(size.x, size.y, size.z);
 
-      // apply transforms once
       scene.scale.setScalar(scale);
       scene.position.sub(center.multiplyScalar(scale));
-      scene.position.y = -1;
+      scene.position.y = -1; // Place on ground
 
       onLoad?.(scene);
     }
@@ -59,44 +206,36 @@ function AvatarModel({ url, onLoad }: ModelProps) {
   return scene ? <primitive object={scene} /> : null;
 }
 
-// Clothing Model Component
+// Enhanced Clothing Model Component
 function ClothingModel({
   url,
   visible,
   color,
-  avatarBounds,
+  avatarData,
   onLoad,
 }: ClothingModelProps) {
   const { scene } = useGLTF(url) as { scene: THREE.Group };
   const meshRef = useRef<THREE.Object3D>(null);
+  const fittedRef = useRef(false);
 
+  // Apply automatic fitting when both clothing and avatar are loaded
   useEffect(() => {
-    if (scene && avatarBounds) {
-      const clothingBox = new THREE.Box3().setFromObject(scene);
-      const clothingSize = clothingBox.getSize(new THREE.Vector3());
-      const avatarSize = avatarBounds.getSize(new THREE.Vector3());
-
-      const scaleX = avatarSize.x / clothingSize.x;
-      const scaleY = avatarSize.y / clothingSize.y;
-      const scaleZ = avatarSize.z / clothingSize.z;
-      const uniformScale = Math.min(scaleX, scaleY, scaleZ) * 1.05;
-
-      scene.scale.setScalar(uniformScale);
-
-      const avatarCenter = avatarBounds.getCenter(new THREE.Vector3());
-      scene.position.copy(avatarCenter);
-      scene.position.y += 0.1;
+    if (scene && avatarData && !fittedRef.current) {
+      fittedRef.current = true;
+      console.log("Applying automatic fitting...");
+      fitClothingToAvatar(scene, avatarData);
+      onLoad?.(scene);
     }
+  }, [scene, avatarData, onLoad]);
 
-    onLoad?.(scene);
-  }, [scene, avatarBounds, onLoad]);
-
+  // Handle visibility
   useEffect(() => {
     if (scene) {
       scene.visible = visible;
     }
   }, [scene, visible]);
 
+  // Handle color changes
   useEffect(() => {
     if (scene && color) {
       scene.traverse((child) => {
@@ -132,7 +271,7 @@ function ClothingModel({
 // Main Scene Component
 function Scene({ sceneState, onSceneReady }: SceneProps) {
   const { camera, scene } = useThree();
-  const [avatarBounds, setAvatarBounds] = useState<THREE.Box3 | null>(null);
+  const [avatarData, setAvatarData] = useState<AvatarData | null>(null);
   const [avatarScene, setAvatarScene] = useState<THREE.Group | null>(null);
   const [clothingScene, setClothingScene] = useState<THREE.Group | null>(null);
 
@@ -146,9 +285,11 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
       if (clothingScene) {
         clothingScene.traverse((child) => {
           if ((child as THREE.Mesh).isMesh && (child as THREE.Mesh).material) {
-            (
-              (child as THREE.Mesh).material as THREE.MeshStandardMaterial
-            ).color = new THREE.Color(color);
+            const mesh = child as THREE.Mesh;
+            const material = mesh.material as THREE.MeshStandardMaterial;
+            if (material.color) {
+              material.color.set(color);
+            }
           }
         });
       }
@@ -157,7 +298,7 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
       if (avatarScene) {
         scene.remove(avatarScene);
         setAvatarScene(null);
-        setAvatarBounds(null);
+        setAvatarData(null);
       }
       if (clothingScene) {
         scene.remove(clothingScene);
@@ -168,12 +309,14 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
 
   const handleAvatarLoad = (loadedScene: THREE.Group) => {
     setAvatarScene(loadedScene);
-    const bounds = new THREE.Box3().setFromObject(loadedScene);
-    setAvatarBounds(bounds);
+    const data = analyzeAvatar(loadedScene);
+    setAvatarData(data);
+    console.log("Avatar analyzed:", data);
   };
 
   const handleClothingLoad = (loadedScene: THREE.Group) => {
     setClothingScene(loadedScene);
+    console.log("Clothing loaded");
   };
 
   useEffect(() => {
@@ -191,7 +334,7 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
 
   return (
     <>
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.6} />
       <directionalLight
         position={[10, 10, 5]}
         intensity={1}
@@ -199,7 +342,7 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
       />
-      <directionalLight position={[-10, 10, -5]} intensity={0.5} />
+      <directionalLight position={[-10, 10, -5]} intensity={0.3} />
 
       <Environment preset="studio" />
 
@@ -217,19 +360,20 @@ function Scene({ sceneState, onSceneReady }: SceneProps) {
         <AvatarModel url={sceneState.avatarModel} onLoad={handleAvatarLoad} />
       )}
 
-      {sceneState.clothingModel && avatarBounds && (
+      {sceneState.clothingModel && avatarData && (
         <ClothingModel
           url={sceneState.clothingModel}
           visible={!!sceneState.clothingVisible}
           color={sceneState.clothingColor}
-          avatarBounds={avatarBounds}
+          avatarData={avatarData}
           onLoad={handleClothingLoad}
         />
       )}
 
+      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#333" />
+        <meshStandardMaterial color="#444" />
       </mesh>
     </>
   );
@@ -250,5 +394,5 @@ export default function Scene3D({ sceneState, onSceneReady }: SceneProps) {
   );
 }
 
-// Preload stub (adjust as needed)
+// Preload stub
 (useGLTF as any).preload = () => {};
