@@ -2,6 +2,10 @@
 
 A production-ready web application that allows users to upload 3D avatar models and fit clothing onto them using Three.js and React. Features automatic scene state persistence, mobile-responsive design, and robust error handling.
 
+![App Screenshot](./public/screenshot.png)
+
+📹 **Demo Video**: [Watch on Loom](https://www.loom.com/share/15e15cd4f6fb467592477eb4ce8a2f4c?sid=c08272ff-b0fd-4715-9128-5deb9e8118e2)
+
 ## ✨ Features
 
 ### Core Functionality
@@ -25,7 +29,6 @@ A production-ready web application that allows users to upload 3D avatar models 
 
 - **File System Compatibility**: Works in serverless environments (Vercel, Netlify)
 - **Automatic Cleanup**: Periodic cleanup of temporary files to prevent storage bloat
-- **Health Monitoring**: Built-in health check endpoint for system monitoring
 - **Security**: File validation, path traversal protection, and size limits
 
 ## 🛠 Tech Stack
@@ -103,12 +106,6 @@ A production-ready web application that allows users to upload 3D avatar models 
    - No additional environment variables required
    - Automatic `/tmp` directory usage in production
    - Built-in file cleanup mechanisms
-
-#### Other Platforms
-
-- **Netlify**: Compatible with serverless functions
-- **Railway**: Full Node.js support
-- **DigitalOcean App Platform**: Container deployment ready
 
 ## 🎮 Usage
 
