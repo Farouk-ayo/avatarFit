@@ -3,9 +3,8 @@ import { put } from "@vercel/blob";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 
-// Configure runtime and duration for large file uploads
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 type UploadResponse = {
@@ -36,7 +35,7 @@ export async function POST(
       );
     }
 
-    const maxSize = 50 * 1024 * 1024; // 50MB
+    const maxSize = 200 * 1024 * 1024;
 
     // Parse form data
     const formData = await request.formData();
@@ -54,7 +53,7 @@ export async function POST(
           error: "File too large",
           details: `File size ${(file.size / 1024 / 1024).toFixed(
             2
-          )}MB exceeds 50MB limit`,
+          )}MB exceeds 200MB limit`,
         },
         { status: 413 }
       );
