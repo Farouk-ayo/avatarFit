@@ -163,27 +163,99 @@ export default function Home() {
     [showNotification]
   );
 
+  // Add this utility function at the top of your page.tsx file
+
+  const uploadWithRetry = async (
+    file: File,
+    type: string,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<UploadResponse> => {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Upload attempt ${attempt}/${maxRetries}`);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", type);
+
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+          // Add headers to help with SSL issues
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          );
+        }
+
+        const data: UploadResponse = await response.json();
+        console.log(`Upload successful on attempt ${attempt}:`, data);
+        return data;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("Unknown error");
+        console.error(`Upload attempt ${attempt} failed:`, lastError.message);
+
+        // Don't retry on certain errors
+        if (
+          lastError.message.includes("File too large") ||
+          lastError.message.includes("Invalid file type") ||
+          lastError.message.includes("413") ||
+          lastError.message.includes("400")
+        ) {
+          throw lastError;
+        }
+
+        // Wait before retrying (exponential backoff)
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.log(`Waiting ${delay}ms before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    throw lastError || new Error("Upload failed after all retries");
+  };
+
+  // Replace your handleAvatarUpload function with this:
   const handleAvatarUpload = useCallback(
     async (file: File): Promise<void> => {
       setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("type", "avatar");
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Upload failed");
+        // Validate file size before upload
+        const maxSize = 50 * 1024 * 1024; // Reduce to 50MB for better reliability
+        if (file.size > maxSize) {
+          throw new Error(
+            `File size ${(file.size / 1024 / 1024).toFixed(
+              2
+            )}MB exceeds 50MB limit`
+          );
         }
 
-        const data: UploadResponse = await response.json();
-        console.log("Avatar upload response:", data);
+        console.log("Starting avatar upload:", {
+          name: file.name,
+          size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+          type: file.type,
+        });
+
+        const data = await uploadWithRetry(file, "avatar");
 
         const updatedState = {
           avatarModel: data.url,
@@ -219,27 +291,29 @@ export default function Home() {
     [sceneState, saveSceneState, showNotification]
   );
 
+  // Replace your handleClothingUpload function with this:
   const handleClothingUpload = useCallback(
     async (file: File): Promise<void> => {
       setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("type", "clothing");
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Upload failed");
+        // Validate file size before upload
+        const maxSize = 50 * 1024 * 1024; // Reduce to 50MB for better reliability
+        if (file.size > maxSize) {
+          throw new Error(
+            `File size ${(file.size / 1024 / 1024).toFixed(
+              2
+            )}MB exceeds 50MB limit`
+          );
         }
 
-        const data: UploadResponse = await response.json();
-        console.log("Clothing upload response:", data);
+        console.log("Starting clothing upload:", {
+          name: file.name,
+          size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+          type: file.type,
+        });
+
+        const data = await uploadWithRetry(file, "clothing");
 
         const updatedState = {
           avatarModel: sceneState.avatarModel,
@@ -274,7 +348,6 @@ export default function Home() {
     },
     [sceneState, saveSceneState, showNotification]
   );
-
   const handleToggleClothing = useCallback(async (): Promise<void> => {
     const newVisibility = !sceneState.clothingVisible;
 
