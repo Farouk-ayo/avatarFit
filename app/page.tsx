@@ -168,10 +168,16 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: "Upload failed" }));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          const errorData = await response.json().catch(() => ({
+            error: `Upload failed with status ${response.status}`,
+          }));
+
+          let errorMessage = errorData.error;
+          if (errorData.details) {
+            errorMessage += `: ${errorData.details}`;
+          }
+
+          throw new Error(errorMessage);
         }
 
         const data: UploadResponse = await response.json();
@@ -224,10 +230,16 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: "Upload failed" }));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          const errorData = await response.json().catch(() => ({
+            error: `Upload failed with status ${response.status}`,
+          }));
+
+          let errorMessage = errorData.error;
+          if (errorData.details) {
+            errorMessage += `: ${errorData.details}`;
+          }
+
+          throw new Error(errorMessage);
         }
 
         const data: UploadResponse = await response.json();
