@@ -16,6 +16,7 @@
     "@mui/material": "^7.2.0",
     "@react-three/drei": "^10.6.1",
     "@react-three/fiber": "^9.3.0",
+    "@supabase/supabase-js": "^2.53.0",
     "formidable": "^3.5.4",
     "fs-extra": "^11.3.0",
     "leva": "^0.10.0",

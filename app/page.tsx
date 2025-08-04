@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
+
+import { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Container,
@@ -12,13 +13,14 @@ import {
   IconButton,
   useMediaQuery,
   Fab,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import {
-  Menu as MenuIcon,
   Close as CloseIcon,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
-import { SceneRef, SceneState, UploadResponse } from "@/types";
+import type { SceneRef, SceneState, UploadResponse } from "@/types";
 import ControlPanel from "@/components/ControlPanel";
 import Scene3D from "@/components/Scene3D";
 import LoadingSpinner from "@/components/loadingSpinner";
@@ -38,23 +40,52 @@ const theme = createTheme({
 
 const DRAWER_WIDTH = 350;
 
+// Generate a session ID for this session
+const SESSION_ID = `session_${Date.now()}_${Math.random()
+  .toString(36)
+  .substr(2, 9)}`;
+
 export default function Home() {
   const [hasMounted, setHasMounted] = useState(false);
-
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [sceneState, setSceneState] = useState<SceneState>({
     avatarModel: undefined,
     clothingModel: undefined,
     clothingVisible: true,
-    clothingColor: "#",
+    clothingColor: "#ffffff", // Fixed: was "#"
     loading: false,
     error: undefined,
   });
-
   const [sceneRef, setSceneRef] = useState<SceneRef | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info" | "warning";
+  }>({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   // Check if we're on mobile
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Show notification helper
+  const showNotification = useCallback(
+    (
+      message: string,
+      severity: "success" | "error" | "info" | "warning" = "info"
+    ) => {
+      setNotification({ open: true, message, severity });
+    },
+    []
+  );
+
+  // Close notification
+  const handleCloseNotification = useCallback(() => {
+    setNotification((prev) => ({ ...prev, open: false }));
+  }, []);
 
   const handleDrawerToggle = () => {
     setMobileDrawerOpen(!mobileDrawerOpen);
@@ -68,45 +99,125 @@ export default function Home() {
     setSceneRef(scene);
   }, []);
 
-  const handleAvatarUpload = useCallback(async (file: File): Promise<void> => {
-    setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
-
+  // Load initial scene state from backend
+  const loadSceneState = useCallback(async (): Promise<void> => {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", "avatar");
+      const response = await fetch("/api/scene-state");
+      if (response.ok) {
+        const savedState = await response.json();
+        console.log("Loaded scene state:", savedState);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+        setSceneState((prev) => ({
+          ...prev,
+          avatarModel: savedState.avatarModel || undefined,
+          clothingModel: savedState.clothingModel || undefined,
+          clothingVisible:
+            savedState.clothingVisible !== undefined
+              ? savedState.clothingVisible
+              : true,
+          clothingColor: savedState.clothingColor || "#ffffff",
+        }));
 
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data: UploadResponse = await response.json();
-      const updatedState = {
-        ...sceneState,
-        avatarModel: data.url,
-      };
-
-      setSceneState((prev) => ({
-        ...prev,
-        avatarModel: data.url,
-        loading: false,
-      }));
-
-      // Save scene state
-      await saveSceneState(updatedState);
+        if (savedState.avatarModel || savedState.clothingModel) {
+          showNotification("Previous scene state restored", "success");
+        }
+      }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      setSceneState((prev) => ({
-        ...prev,
-        error: errorMessage as string | undefined,
-        loading: false,
-      }));
+      console.error("Failed to load scene state:", error);
+      // Don't show error notification for initial load failure
+    } finally {
+      setInitialLoadComplete(true);
     }
-  }, []);
+  }, [showNotification]);
+
+  // Save scene state to backend
+  const saveSceneState = useCallback(
+    async (stateUpdate: Partial<SceneState>): Promise<void> => {
+      try {
+        const stateToSave = {
+          avatarModel: stateUpdate.avatarModel,
+          clothingModel: stateUpdate.clothingModel,
+          clothingVisible: stateUpdate.clothingVisible,
+          clothingColor: stateUpdate.clothingColor,
+          sessionId: SESSION_ID,
+        };
+
+        const response = await fetch("/api/scene-state", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(stateToSave),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save scene state");
+        }
+
+        console.log("Scene state saved successfully");
+      } catch (error) {
+        console.error("Failed to save scene state:", error);
+        showNotification("Failed to save scene state", "warning");
+      }
+    },
+    [showNotification]
+  );
+
+  const handleAvatarUpload = useCallback(
+    async (file: File): Promise<void> => {
+      setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", "avatar");
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Upload failed");
+        }
+
+        const data: UploadResponse = await response.json();
+        console.log("Avatar upload response:", data);
+
+        const updatedState = {
+          avatarModel: data.url,
+          clothingModel: sceneState.clothingModel,
+          clothingVisible: sceneState.clothingVisible,
+          clothingColor: sceneState.clothingColor,
+        };
+
+        setSceneState((prev) => ({
+          ...prev,
+          avatarModel: data.url,
+          loading: false,
+          error: undefined,
+        }));
+
+        // Save scene state with updated values
+        await saveSceneState(updatedState);
+        showNotification("Avatar uploaded successfully", "success");
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        console.error("Avatar upload error:", errorMessage);
+
+        setSceneState((prev) => ({
+          ...prev,
+          error: errorMessage,
+          loading: false,
+        }));
+
+        showNotification(`Avatar upload failed: ${errorMessage}`, "error");
+      }
+    },
+    [sceneState, saveSceneState, showNotification]
+  );
 
   const handleClothingUpload = useCallback(
     async (file: File): Promise<void> => {
@@ -122,95 +233,124 @@ export default function Home() {
           body: formData,
         });
 
-        if (!response.ok) throw new Error("Upload failed");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Upload failed");
+        }
 
         const data: UploadResponse = await response.json();
+        console.log("Clothing upload response:", data);
+
         const updatedState = {
-          ...sceneState,
+          avatarModel: sceneState.avatarModel,
           clothingModel: data.url,
+          clothingVisible: sceneState.clothingVisible,
+          clothingColor: sceneState.clothingColor,
         };
 
         setSceneState((prev) => ({
           ...prev,
           clothingModel: data.url,
           loading: false,
+          error: undefined,
         }));
 
-        // Save scene state
+        // Save scene state with updated values
         await saveSceneState(updatedState);
+        showNotification("Clothing uploaded successfully", "success");
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error occurred";
+        console.error("Clothing upload error:", errorMessage);
+
         setSceneState((prev) => ({
           ...prev,
           error: errorMessage,
           loading: false,
         }));
+
+        showNotification(`Clothing upload failed: ${errorMessage}`, "error");
       }
     },
-    []
+    [sceneState, saveSceneState, showNotification]
   );
 
-  const { clothingVisible } = sceneState;
+  const handleToggleClothing = useCallback(async (): Promise<void> => {
+    const newVisibility = !sceneState.clothingVisible;
 
-  const handleToggleClothing = useCallback((): void => {
-    const newVisibility = !clothingVisible;
     setSceneState((prev) => ({
       ...prev,
       clothingVisible: newVisibility,
     }));
 
+    // Update 3D scene
     sceneRef?.toggleClothingVisibility?.(newVisibility);
-  }, [clothingVisible, sceneRef]);
+
+    // Save state
+    const updatedState = {
+      ...sceneState,
+      clothingVisible: newVisibility,
+    };
+    await saveSceneState(updatedState);
+
+    showNotification(`Clothing ${newVisibility ? "shown" : "hidden"}`, "info");
+  }, [sceneState, sceneRef, saveSceneState, showNotification]);
 
   const handleColorChange = useCallback(
-    (color: string): void => {
+    async (color: string): Promise<void> => {
       setSceneState((prev) => ({ ...prev, clothingColor: color }));
 
+      // Update 3D scene
       if (sceneRef?.changeClothingColor) {
         sceneRef.changeClothingColor(color);
       }
+
+      // Save state
+      const updatedState = {
+        ...sceneState,
+        clothingColor: color,
+      };
+      await saveSceneState(updatedState);
     },
-    [, sceneRef]
-  );
+    [sceneState, sceneRef, saveSceneState]
+  ); // Fixed: removed empty dependency
 
   const handleResetScene = useCallback(async (): Promise<void> => {
-    setSceneState({
+    const defaultState = {
       avatarModel: undefined,
       clothingModel: undefined,
       clothingVisible: true,
       clothingColor: "#ffffff",
       loading: false,
       error: undefined,
-    });
+    };
 
+    setSceneState(defaultState);
+
+    // Clear 3D scene
     if (sceneRef?.clearScene) {
       sceneRef.clearScene();
     }
 
     // Clear saved state
     try {
-      await fetch("/api/scene-state", {
+      const response = await fetch("/api/scene-state", {
         method: "DELETE",
       });
+
+      if (response.ok) {
+        showNotification("Scene reset successfully", "success");
+      } else {
+        throw new Error("Failed to clear scene state");
+      }
     } catch (error) {
       console.error("Failed to clear scene state:", error);
+      showNotification(
+        "Scene reset locally, but failed to clear saved state",
+        "warning"
+      );
     }
-  }, [sceneRef]);
-
-  const saveSceneState = async (state: Partial<SceneState>): Promise<void> => {
-    try {
-      await fetch("/api/scene-state", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(state),
-      });
-    } catch (error) {
-      console.error("Failed to save scene state:", error);
-    }
-  };
+  }, [sceneRef, showNotification]);
 
   // Control Panel Component
   const controlPanelContent = (
@@ -225,19 +365,28 @@ export default function Home() {
       onClose={handleDrawerClose}
     />
   );
+
+  // Load initial scene state on mount
   useEffect(() => {
     setHasMounted(true);
-  }, []);
+    loadSceneState();
+  }, [loadSceneState]);
 
-  if (!hasMounted) {
+  // Show loading screen until mounted and initial load is complete
+  if (!hasMounted || !initialLoadComplete) {
     return (
       <Box
         sx={{
           width: "100vw",
           height: "100vh",
           backgroundColor: theme.palette.background.default,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
-      />
+      >
+        <LoadingSpinner message="Loading application..." />
+      </Box>
     );
   }
 
@@ -340,9 +489,31 @@ export default function Home() {
             }}
           >
             <Scene3D sceneState={sceneState} onSceneReady={handleSceneReady} />
-
             {sceneState.loading && (
               <LoadingSpinner message="Loading 3D model..." />
+            )}
+
+            {/* Error Display */}
+            {sceneState.error && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  zIndex: 1000,
+                }}
+              >
+                <Alert
+                  severity="error"
+                  onClose={() =>
+                    setSceneState((prev) => ({ ...prev, error: undefined }))
+                  }
+                  sx={{ mb: 2 }}
+                >
+                  {sceneState.error}
+                </Alert>
+              </Box>
             )}
           </Paper>
 
@@ -363,6 +534,22 @@ export default function Home() {
             </Fab>
           )}
         </Box>
+
+        {/* Notification Snackbar */}
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={4000}
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification.severity}
+            sx={{ width: "100%" }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </ThemeProvider>
   );
