@@ -64,7 +64,6 @@ export async function POST(
 
     // Optional: Clean up old files periodically
     if (Math.random() < 0.05) {
-      // 5% chance to run cleanup
       cleanupOldUploads();
     }
 
@@ -145,7 +144,7 @@ export async function POST(
     // In production, we need to serve files differently since they're in /tmp
     const publicUrl =
       process.env.NODE_ENV === "production"
-        ? `/api/files/${newFilename}` // We'll create this endpoint
+        ? `/api/files/${newFilename}` 
         : `/uploads/${newFilename}`;
 
     console.log("Upload successful:", {
@@ -166,7 +165,6 @@ export async function POST(
     console.error("=== APP ROUTER UPLOAD ERROR ===", error);
 
     if (error instanceof Error) {
-      // Handle specific error types
       if (
         error.message.includes("PayloadTooLargeError") ||
         error.message.includes("Body exceeded") ||

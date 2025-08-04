@@ -313,7 +313,7 @@ export default function Home() {
       await saveSceneState(updatedState);
     },
     [sceneState, sceneRef, saveSceneState]
-  ); // Fixed: removed empty dependency
+  );
 
   const handleResetScene = useCallback(async (): Promise<void> => {
     const defaultState = {

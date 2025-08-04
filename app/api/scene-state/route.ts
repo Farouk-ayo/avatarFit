@@ -19,7 +19,7 @@ type SceneState = {
   clothingVisible: boolean;
   clothingColor: string;
   timestamp?: string;
-  sessionId?: string; // Add session tracking for better state management
+  sessionId?: string;
 };
 
 // Helper function to get default state
@@ -50,16 +50,13 @@ const cleanupOldStates = async () => {
     }
   } catch (error) {
     console.log("Cleanup warning:", error);
-    // Don't throw - cleanup is optional
   }
 };
 
 // GET - Retrieve scene state
 export async function GET(req: NextRequest) {
   try {
-    // Optional: Clean up old files periodically
     if (Math.random() < 0.1) {
-      // 10% chance to run cleanup
       cleanupOldStates();
     }
 
@@ -72,7 +69,6 @@ export async function GET(req: NextRequest) {
     }
   } catch (error) {
     console.error("Error reading scene state:", error);
-    // Return default state instead of error to maintain app functionality
     return NextResponse.json(getDefaultState(), { status: 200 });
   }
 }
@@ -116,7 +112,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true, message: "Scene state cleared" });
   } catch (error) {
     console.error("Error clearing scene state:", error);
-    // Return success even if deletion fails to maintain app functionality
     return NextResponse.json({ success: true, message: "Scene state cleared" });
   }
 }
