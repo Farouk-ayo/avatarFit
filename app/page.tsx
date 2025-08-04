@@ -24,6 +24,7 @@ import type { SceneRef, SceneState, UploadResponse } from "@/types";
 import ControlPanel from "@/components/ControlPanel";
 import Scene3D from "@/components/Scene3D";
 import LoadingSpinner from "@/components/loadingSpinner";
+import { getStatusErrorMessage } from "@/utils";
 
 const theme = createTheme({
   palette: {
@@ -169,7 +170,7 @@ export default function Home() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({
-            error: `Upload failed with status ${response.status}`,
+            error: getStatusErrorMessage(response.status),
           }));
 
           let errorMessage = errorData.error;
@@ -231,7 +232,7 @@ export default function Home() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({
-            error: `Upload failed with status ${response.status}`,
+            error: getStatusErrorMessage(response.status),
           }));
 
           let errorMessage = errorData.error;
