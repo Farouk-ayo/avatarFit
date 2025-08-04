@@ -2,12 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import fs from "fs-extra";
 import path from "path";
 
-// Use /tmp directory for production compatibility
-const dataDir =
-  process.env.NODE_ENV === "production"
-    ? "/tmp/avatar-app-data"
-    : path.join(process.cwd(), "data");
-
+// Use local file storage for scene state
+const dataDir = path.join(process.cwd(), "data");
 const stateFilePath = path.join(dataDir, "scene-state.json");
 
 // Ensure directory exists
@@ -19,7 +15,6 @@ type SceneState = {
   clothingVisible: boolean;
   clothingColor: string;
   timestamp?: string;
-  sessionId?: string;
 };
 
 // Helper function to get default state
@@ -30,36 +25,9 @@ const getDefaultState = (): SceneState => ({
   clothingColor: "#ffffff",
 });
 
-// Helper function to clean up old state files (optional cleanup)
-const cleanupOldStates = async () => {
-  try {
-    if (process.env.NODE_ENV === "production") {
-      const files = await fs.readdir(dataDir);
-      const now = Date.now();
-      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-      for (const file of files) {
-        if (file.startsWith("scene-state-") && file.endsWith(".json")) {
-          const filePath = path.join(dataDir, file);
-          const stats = await fs.stat(filePath);
-          if (now - stats.mtime.getTime() > maxAge) {
-            await fs.remove(filePath);
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.log("Cleanup warning:", error);
-  }
-};
-
 // GET - Retrieve scene state
 export async function GET(req: NextRequest) {
   try {
-    if (Math.random() < 0.1) {
-      cleanupOldStates();
-    }
-
     const stateExists = await fs.pathExists(stateFilePath);
     if (stateExists) {
       const state = await fs.readJson(stateFilePath);
@@ -85,13 +53,9 @@ export async function POST(req: NextRequest) {
         body.clothingVisible !== undefined ? body.clothingVisible : true,
       clothingColor: body.clothingColor || "#ffffff",
       timestamp: new Date().toISOString(),
-      sessionId: body.sessionId || `session_${Date.now()}`,
     };
 
-    // Ensure directory exists before writing
-    await fs.ensureDir(dataDir);
     await fs.writeJson(stateFilePath, validState, { spaces: 2 });
-
     return NextResponse.json({ success: true, state: validState });
   } catch (error) {
     console.error("Error saving scene state:", error);

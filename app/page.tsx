@@ -40,11 +40,6 @@ const theme = createTheme({
 
 const DRAWER_WIDTH = 350;
 
-// Generate a session ID for this session
-const SESSION_ID = `session_${Date.now()}_${Math.random()
-  .toString(36)
-  .substr(2, 9)}`;
-
 export default function Home() {
   const [hasMounted, setHasMounted] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -52,7 +47,7 @@ export default function Home() {
     avatarModel: undefined,
     clothingModel: undefined,
     clothingVisible: true,
-    clothingColor: "#ffffff", // Fixed: was "#"
+    clothingColor: "#ffffff",
     loading: false,
     error: undefined,
   });
@@ -105,7 +100,6 @@ export default function Home() {
       const response = await fetch("/api/scene-state");
       if (response.ok) {
         const savedState = await response.json();
-        console.log("Loaded scene state:", savedState);
 
         setSceneState((prev) => ({
           ...prev,
@@ -124,7 +118,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Failed to load scene state:", error);
-      // Don't show error notification for initial load failure
     } finally {
       setInitialLoadComplete(true);
     }
@@ -139,7 +132,6 @@ export default function Home() {
           clothingModel: stateUpdate.clothingModel,
           clothingVisible: stateUpdate.clothingVisible,
           clothingColor: stateUpdate.clothingColor,
-          sessionId: SESSION_ID,
         };
 
         const response = await fetch("/api/scene-state", {
@@ -153,8 +145,6 @@ export default function Home() {
         if (!response.ok) {
           throw new Error("Failed to save scene state");
         }
-
-        console.log("Scene state saved successfully");
       } catch (error) {
         console.error("Failed to save scene state:", error);
         showNotification("Failed to save scene state", "warning");
@@ -163,99 +153,28 @@ export default function Home() {
     [showNotification]
   );
 
-  // Add this utility function at the top of your page.tsx file
-
-  const uploadWithRetry = async (
-    file: File,
-    type: string,
-    maxRetries: number = 3,
-    baseDelay: number = 1000
-  ): Promise<UploadResponse> => {
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Upload attempt ${attempt}/${maxRetries}`);
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("type", type);
-
-        // Add timeout to prevent hanging requests
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-          signal: controller.signal,
-          // Add headers to help with SSL issues
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.error || `HTTP ${response.status}: ${response.statusText}`
-          );
-        }
-
-        const data: UploadResponse = await response.json();
-        console.log(`Upload successful on attempt ${attempt}:`, data);
-        return data;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error("Unknown error");
-        console.error(`Upload attempt ${attempt} failed:`, lastError.message);
-
-        // Don't retry on certain errors
-        if (
-          lastError.message.includes("File too large") ||
-          lastError.message.includes("Invalid file type") ||
-          lastError.message.includes("413") ||
-          lastError.message.includes("400")
-        ) {
-          throw lastError;
-        }
-
-        // Wait before retrying (exponential backoff)
-        if (attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt - 1);
-          console.log(`Waiting ${delay}ms before retry...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    throw lastError || new Error("Upload failed after all retries");
-  };
-
-  // Replace your handleAvatarUpload function with this:
   const handleAvatarUpload = useCallback(
     async (file: File): Promise<void> => {
       setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
 
       try {
-        // Validate file size before upload
-        const maxSize = 50 * 1024 * 1024; // Reduce to 50MB for better reliability
-        if (file.size > maxSize) {
-          throw new Error(
-            `File size ${(file.size / 1024 / 1024).toFixed(
-              2
-            )}MB exceeds 50MB limit`
-          );
-        }
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", "avatar");
 
-        console.log("Starting avatar upload:", {
-          name: file.name,
-          size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-          type: file.type,
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
         });
 
-        const data = await uploadWithRetry(file, "avatar");
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Upload failed" }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data: UploadResponse = await response.json();
 
         const updatedState = {
           avatarModel: data.url,
@@ -271,7 +190,6 @@ export default function Home() {
           error: undefined,
         }));
 
-        // Save scene state with updated values
         await saveSceneState(updatedState);
         showNotification("Avatar uploaded successfully", "success");
       } catch (error) {
@@ -291,29 +209,28 @@ export default function Home() {
     [sceneState, saveSceneState, showNotification]
   );
 
-  // Replace your handleClothingUpload function with this:
   const handleClothingUpload = useCallback(
     async (file: File): Promise<void> => {
       setSceneState((prev) => ({ ...prev, loading: true, error: undefined }));
 
       try {
-        // Validate file size before upload
-        const maxSize = 50 * 1024 * 1024; // Reduce to 50MB for better reliability
-        if (file.size > maxSize) {
-          throw new Error(
-            `File size ${(file.size / 1024 / 1024).toFixed(
-              2
-            )}MB exceeds 50MB limit`
-          );
-        }
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", "clothing");
 
-        console.log("Starting clothing upload:", {
-          name: file.name,
-          size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-          type: file.type,
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
         });
 
-        const data = await uploadWithRetry(file, "clothing");
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Upload failed" }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data: UploadResponse = await response.json();
 
         const updatedState = {
           avatarModel: sceneState.avatarModel,
@@ -329,7 +246,6 @@ export default function Home() {
           error: undefined,
         }));
 
-        // Save scene state with updated values
         await saveSceneState(updatedState);
         showNotification("Clothing uploaded successfully", "success");
       } catch (error) {
@@ -348,6 +264,7 @@ export default function Home() {
     },
     [sceneState, saveSceneState, showNotification]
   );
+
   const handleToggleClothing = useCallback(async (): Promise<void> => {
     const newVisibility = !sceneState.clothingVisible;
 
@@ -356,10 +273,8 @@ export default function Home() {
       clothingVisible: newVisibility,
     }));
 
-    // Update 3D scene
     sceneRef?.toggleClothingVisibility?.(newVisibility);
 
-    // Save state
     const updatedState = {
       ...sceneState,
       clothingVisible: newVisibility,
@@ -373,12 +288,10 @@ export default function Home() {
     async (color: string): Promise<void> => {
       setSceneState((prev) => ({ ...prev, clothingColor: color }));
 
-      // Update 3D scene
       if (sceneRef?.changeClothingColor) {
         sceneRef.changeClothingColor(color);
       }
 
-      // Save state
       const updatedState = {
         ...sceneState,
         clothingColor: color,
@@ -400,12 +313,10 @@ export default function Home() {
 
     setSceneState(defaultState);
 
-    // Clear 3D scene
     if (sceneRef?.clearScene) {
       sceneRef.clearScene();
     }
 
-    // Clear saved state
     try {
       const response = await fetch("/api/scene-state", {
         method: "DELETE",
@@ -466,6 +377,7 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+
       <Container
         maxWidth="xl"
         sx={{
